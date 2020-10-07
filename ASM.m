@@ -13,10 +13,11 @@ itermax = 20000;
 m = size(A,1); % the number of constraints
 % W = working set, the set of active constrains
 I = (1:m)';
-Wc = I; % the compliment of W
+Wc = setdiff(I,W);
+% Wc = I; % the compliment of W
 xiter = x;
 while iter < itermax
-    size(W)
+%     size(W)
     % compute step p: solve 0.5*p'*H*p + g'*p --> min subject to A(W,:)*p = 0
     AW = A(W,:); % LHS of active constraints
     % fix H if it is not positive definite

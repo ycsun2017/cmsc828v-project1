@@ -1,11 +1,11 @@
-function [w,f,normgrad] = SINewton(fun,gfun,Hvec,Y,w,kmax)
+function [w,f,normgrad,runtime] = SINewton(fun,gfun,Hvec,Y,w,kmax,batchsize)
 rho = 0.1;
 gam = 0.9;
 jmax = ceil(log(1e-14)/log(gam)); % max # of iterations in line search
 eta = 0.5;
 CGimax = 20; % max number of CG iterations
 n = size(Y,1);
-bsz = min(n,64); % batch size
+bsz = min(n,batchsize); % batch size
 % kmax = 1e3;
 [n,~] = size(Y);
 I = 1:n;
@@ -14,6 +14,9 @@ f(1) = fun(I,Y,w);
 normgrad = zeros(kmax,1);
 nfail = 0;
 nfailmax = 5*ceil(n/bsz);
+runtime = zeros(kmax+1,1); 
+runtime(1) = 0;
+tic;
 for k = 1 : kmax
     Ig = randperm(n,bsz);
     IH = randperm(n,bsz);
@@ -46,6 +49,7 @@ for k = 1 : kmax
         normgrad(k+1:end) = [];
         break;
     end
+    runtime(k+1) = toc;
 end
 end
         

@@ -108,24 +108,27 @@ lam = 0.01;
 fun = @(I,Y,w)fun0(I,Y,w,lam);
 gfun = @(I,Y,w)gfun0(I,Y,w,lam);
 iter = 2000;
-stepsize = 0.01;
-batchsize = 16;
+stepsize = 0.1;
+batchsize = 256;
 folder = 'problem2_figs/';
 postfix = 'dec_step'; % if decrease the stepsize linearly
 % postfix = '';
-runs = 1000;
+runs = 100;
 w_ans = zeros(runs,4);
 f = zeros(runs,iter);
 gnorm = zeros(runs,iter);
+runtime = zeros(runs,iter);
 for r = 1 : runs
-    [w_temp,f_temp,gnorm_temp] = SGD(w,Y,fun,gfun,iter,stepsize,batchsize,1);
+    [w_temp,f_temp,gnorm_temp,runtime_temp] = SGD(w,Y,fun,gfun,iter,stepsize,batchsize,1);
     w_ans(r,:) = w_temp';
     f(r,:) = f_temp';
     gnorm(r,:) = gnorm_temp';
+    runtime(r,:) = runtime_temp;
 end
 w = mean(w_ans);
 f = mean(f);
 gnorm = mean(gnorm);
+runtime = mean(runtime);
 
 fprintf('w = [%d,%d,%d], b = %d\n',w(1),w(2),w(3),w(4));
 
@@ -168,6 +171,17 @@ set(gca,'YScale','log');
 xlabel('k','Fontsize',fsz);
 ylabel('|| stoch grad f||','Fontsize',fsz);
 filename = [folder,'sg_gnorm_iter',num2str(iter),'_stepsize', ...
+    num2str(stepsize),'_batch',num2str(batchsize),postfix,'.png'];
+saveas(gcf,filename)
+%%
+figure;
+hold on;
+grid;
+plot(runtime,f,'Linewidth',2);
+set(gca,'Fontsize',fsz);
+xlabel('runtime','Fontsize',fsz);
+ylabel('f','Fontsize',fsz);
+filename = [folder,'sg_f_runtime_iter',num2str(iter),'_stepsize', ...
     num2str(stepsize),'_batch',num2str(batchsize),postfix,'.png'];
 saveas(gcf,filename)
 end

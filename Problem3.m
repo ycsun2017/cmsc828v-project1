@@ -1,4 +1,4 @@
-function Problem1()
+function Problem2()
 close all
 %% read data
 A2012 = readmatrix('A2012.csv');
@@ -20,12 +20,12 @@ ind = find(~isfinite(A(:,2)) |  ~isfinite(A(:,3)) | ~isfinite(A(:,4)) ...
 A(ind,:) = [];
 %% select CA, OR, WA, NJ, NY counties
 % ind = find((A(:,1)>=6000 & A(:,1)<=6999)); % ...  %CA
-ind = find((A(:,1)>=6000 & A(:,1)<=6999) ...
- | (A(:,1)>=53000 & A(:,1)<=53999) ...        %WA
- | (A(:,1)>=34000 & A(:,1)<=34999) ...        %NJ  
- | (A(:,1)>=36000 & A(:,1)<=36999) ...        %NY
- | (A(:,1)>=41000 & A(:,1)<=41999));          %OR
-A = A(ind,:);
+% ind = find((A(:,1)>=6000 & A(:,1)<=6999) ...
+%  | (A(:,1)>=53000 & A(:,1)<=53999) ...        %WA
+%  | (A(:,1)>=34000 & A(:,1)<=34999) ...        %NJ  
+%  | (A(:,1)>=36000 & A(:,1)<=36999) ...        %NY
+%  | (A(:,1)>=41000 & A(:,1)<=41999));          %OR
+% A = A(ind,:);
 
 [n,dim] = size(A);
 
@@ -38,26 +38,26 @@ label(idem) = -1;
 label(igop) = 1;
 
 %% select max subset of data with equal numbers of dem and gop counties
-% ngop = length(igop);
-% ndem = length(idem);
-% if ngop > ndem
-%     rgop = randperm(ngop,ndem);
-%     Adem = A(idem,:);
-%     Agop = A(igop(rgop),:);
-%     A = [Adem;Agop];
-% else
-%     rdem = randperm(ndem,ngop);
-%     Agop = A(igop,:);
-%     Adem = A(idem(rdem),:);
-%     A = [Adem;Agop];
-% end  
-% [n,dim] = size(A)
-% idem = find(A(:,2) >= A(:,3));
-% igop = find(A(:,2) < A(:,3));
-% num = A(:,2)+A(:,3);
-% label = zeros(n,1);
-% label(idem) = -1;
-% label(igop) = 1;
+ngop = length(igop);
+ndem = length(idem);
+if ngop > ndem
+    rgop = randperm(ngop,ndem);
+    Adem = A(idem,:);
+    Agop = A(igop(rgop),:);
+    A = [Adem;Agop];
+else
+    rdem = randperm(ndem,ngop);
+    Agop = A(igop,:);
+    Adem = A(idem(rdem),:);
+    A = [Adem;Agop];
+end  
+[n,dim] = size(A)
+idem = find(A(:,2) >= A(:,3));
+igop = find(A(:,2) < A(:,3));
+num = A(:,2)+A(:,3);
+label = zeros(n,1);
+label(idem) = -1;
+label(igop) = 1;
 
 %% set up data matrix and visualize
 close all
@@ -103,26 +103,33 @@ zlabel(str(i3),'Fontsize',fsz);
 Y = (label*ones(1,dim + 1)).*[XX,ones(n,1)];
 w = [-1;-1;1;1];
 
-%% Problem 1: SVM
-C = 1000;
-A = [Y,eye(n);zeros(n,dim+1),eye(n)];
-b = [ones(1,n), zeros(1,n)].';
+%% Problem 3: SINewton
 lam = 0.01;
 fun = @(I,Y,w)fun0(I,Y,w,lam);
 gfun = @(I,Y,w)gfun0(I,Y,w,lam);
 Hvec = @(I,Y,w,v)Hvec0(I,Y,w,v,lam);
-% [w,f,gnorm] = SINewton(fun,gfun,Hvec,Y,w,1e3,64); % unconstrained problem
-[w,f,gnorm] = SINewton(fun,gfun,Hvec,Y,w,1e3,64); % initialization of SVM
-e = ones(n,1);
-xi = max(e-Y*w,0);
-x = [w;xi];
-active = A*x - b;
-W = find(~active);
-% W = [];
-gfun = @(w)gfunSVM(w,C,n,dim);
-Hfun = @(w)hfunSVM(w,C,n,dim);
-[x,lm] = ASM(x,gfun,Hfun,A,b,W);
-w = x(1:4);
+
+batchsize = 256;
+folder = 'problem3_figs/';
+% postfix = 'dec_step'; % if decrease the stepsize linearly
+postfix = '';
+runs = 100;
+iter = 1000;
+w_ans = zeros(runs,4);
+f = zeros(runs,iter+1);
+gnorm = zeros(runs,iter);
+runtime = zeros(runs,iter+1);
+for r = 1 : runs
+    [w_temp,f_temp,gnorm_temp,runtime_temp] = SINewton(fun,gfun,Hvec,Y,w,iter,batchsize);
+    w_ans(r,:) = w_temp';
+    f(r,:) = f_temp';
+    gnorm(r,:) = gnorm_temp';
+    runtime(r,:) = runtime_temp;
+end
+w = mean(w_ans);
+f = mean(f);
+gnorm = mean(gnorm);
+runtime = mean(runtime);
 
 fprintf('w = [%d,%d,%d], b = %d\n',w(1),w(2),w(3),w(4));
 
@@ -139,7 +146,9 @@ p.EdgeColor = 'none';
 camlight 
 lighting gouraud
 alpha(0.3);
-
+filename = [folder,'sin_iter',num2str(iter),...
+    '_batch',num2str(batchsize),postfix,'.fig'];
+saveas(gcf,filename)
 %%
 figure;
 hold on;
@@ -149,6 +158,9 @@ plot((0:niter-1)',f,'Linewidth',2);
 set(gca,'Fontsize',fsz);
 xlabel('k','Fontsize',fsz);
 ylabel('f','Fontsize',fsz);
+filename = [folder,'sin_f_iter',num2str(iter), ...
+    '_batch',num2str(batchsize),postfix,'.png'];
+saveas(gcf,filename)
 %%
 figure;
 hold on;
@@ -159,7 +171,20 @@ set(gca,'Fontsize',fsz);
 set(gca,'YScale','log');
 xlabel('k','Fontsize',fsz);
 ylabel('|| stoch grad f||','Fontsize',fsz);
-
+filename = [folder,'sin_gnorm_iter',num2str(iter), ...
+    '_batch',num2str(batchsize),postfix,'.png'];
+saveas(gcf,filename)
+%%
+figure;
+hold on;
+grid;
+plot(runtime,f,'Linewidth',2);
+set(gca,'Fontsize',fsz);
+xlabel('runtime','Fontsize',fsz);
+ylabel('f','Fontsize',fsz);
+filename = [folder,'sin_f_runtime_iter',num2str(iter), ...
+    '_batch',num2str(batchsize),postfix,'.png'];
+saveas(gcf,filename)
 end
 %%
 function f = fun0(I,Y,w,lam)
