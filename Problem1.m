@@ -115,6 +115,7 @@ Hvec = @(I,Y,w,v)Hvec0(I,Y,w,v,lam);
 [w,f,gnorm] = SINewton(fun,gfun,Hvec,Y,w,1e3,64); % initialization of SVM
 e = ones(n,1);
 xi = max(e-Y*w,0);
+size(xi)
 x = [w;xi];
 active = A*x - b;
 W = find(~active);
